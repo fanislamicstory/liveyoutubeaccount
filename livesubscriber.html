@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Subscriber Counter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-image: linear-gradient(to bottom, #2980b9, #6dd5fa);
+      color: #fff;
+      padding-top: 50px;
+    }
+    @keyframes bigSmall {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); } /* Membesar */
+    100% { transform: scale(1); } /* Kembali ke ukuran semula */
+}
+
+.animated-text {
+    font-size: 24px;
+    font-weight: bold;
+    display: inline-block;
+    animation: bigSmall 1s infinite alternate;
+}
+
+
+    /* Style untuk pencarian */
+    .search-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+    }
+
+    #search-box {
+      padding: 8px;
+      width: 250px;
+      border-radius: 5px;
+      border: none;
+    }
+
+    #search-button {
+      padding: 8px;
+      border: none;
+      background-color: #ff0000;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 5px;
+    }
+
+    /* Style untuk informasi channel */
+    #channel-logo {
+      width: 80px;
+   background-color: white;
+      height: 80px;
+      margin-top: 15px;
+      border-radius: 50%;
+    }
+
+    #channel-name {
+      font-size: 20px;
+      margin-top: 10px;
+    }
+
+    /* Style untuk subscriber */
+    #subscriber-count {
+      font-size: 30px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    #subscriber-text {
+      font-size: 20px;
+    }
+
+    .stats-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.stat-box {
+  text-align: center;
+  margin-bottom: 10px; /* Jarak antar elemen */
+}
+
+.stat-number {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.stat-label {
+  font-size: 16px;
+}
+
+.live-video-button {
+  background-color: #1a237e; /* Biru tua */
+  color: white;
+  padding: 10px 15px;
+  text-decoration: none;
+  font-size: 16px;
+  border-radius: 5px;
+  display: inline-block;
+  margin-top: 10px;
+  transition: 0.3s;
+}
+
+.live-video-button:hover {
+  background-color: #0d1b5c; /* Warna lebih gelap saat hover */
+}
+
+
+
+    /* Style untuk footer */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      text-align: center;
+      padding: 5px 0;
+      font-size: 12px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="search-container">
+    <input type="text" id="search-box" placeholder="Cari channel YouTube...">
+    <button id="search-button">Cari</button>
+  </div>
+
+  <h1>Live Subscriber Counter</h1>
+
+  <div>
+    <img id="channel-logo" src="https://www.iconpacks.net/icons/2/free-user-icon-3296-thumb.png" alt="Logo Channel">
+    <h2 id="channel-name">Nama Channel</h2>
+    <div id="subscriber-count" class="animated-text">-</div>
+    <div id="subscriber-text">Subscriber</div>
+  </div>
+
+  <div class="stats-container">
+    <div class="stat-box">
+      <div id="viewer-count" class="stat-number">-</div>
+      <div class="stat-label">Views</div>
+    </div>
+    <div class="stat-box">
+      <div id="video-count" class="stat-number">-</div>
+      <div class="stat-label">Total Video</div>
+    </div>
+  </div>
+  
+  <a href="menu.html" class="live-video-button">Menu</a>
+
+  <div class="footer">
+    <p>&copy; 2025 - Islamic Story</p>
+  </div>
+
+  <script>
+    const api_key = "AIzaSyBESZxxshu7eQwigo4th37-8JZPKQlJnjA"; // Ganti dengan API Key asli
+    let intervalSubscriber, intervalVideo;
+
+    async function searchChannel() {
+        clearInterval(intervalSubscriber);
+        clearInterval(intervalVideo);
+
+        const query = document.getElementById("search-box").value;
+        if (!query) return alert("Masukkan nama channel!");
+
+        try {
+            let searchResponse = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${query}&key=${api_key}`);
+            let searchData = await searchResponse.json();
+
+            if (!searchData.items.length) return alert("Channel tidak ditemukan!");
+
+            let channelId = searchData.items[0].id.channelId;
+            let channelName = searchData.items[0].snippet.title;
+            let channelLogo = searchData.items[0].snippet.thumbnails.default.url;
+
+            document.getElementById("channel-name").innerText = channelName;
+            document.getElementById("channel-logo").src = channelLogo;
+
+            updateSubscriberAndViewer(channelId);
+            updateTotalVideo(channelId);
+
+            intervalSubscriber = setInterval(() => updateSubscriberAndViewer(channelId), 1000);
+            intervalVideo = setInterval(() => updateTotalVideo(channelId), 300000); // 5 menit
+        } catch (error) {
+            console.error("Gagal mencari channel:", error);
+        }
+    }
+
+    async function updateSubscriberAndViewer(channelId) {
+        try {
+            let response = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${api_key}`);
+            let data = await response.json();
+
+            if (data.items) {
+                let stats = data.items[0].statistics;
+                document.getElementById("subscriber-count").innerText = parseInt(stats.subscriberCount).toLocaleString('id-ID');
+                document.getElementById("viewer-count").innerText = parseInt(stats.viewCount).toLocaleString('id-ID');
+            }
+        } catch (error) {
+            console.error("Gagal mengambil data subscriber/viewer:", error);
+        }
+    }
+
+    async function updateTotalVideo(channelId) {
+        try {
+            let response = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${api_key}`);
+            let data = await response.json();
+
+            if (data.items) {
+                let videoCount = data.items[0].statistics.videoCount;
+                document.getElementById("video-count").innerText = parseInt(videoCount).toLocaleString('id-ID');
+            }
+        } catch (error) {
+            console.error("Gagal mengambil data total video:", error);
+        }
+    }
+
+    document.getElementById("search-button").addEventListener("click", searchChannel);
+  </script>
+
+</body>
+</html>
